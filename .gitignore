@@ -1,0 +1,14 @@
+# C++ / CMake
+/build*/
+/.cmake/
+/CMakeLists.txt.user
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Qt Creator specific
+*.pro.user
+*.moc
+*.obj
+*.o
