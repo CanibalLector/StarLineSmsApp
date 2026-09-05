@@ -41,37 +41,66 @@ void SmsManager::sendCommand(const QString &commandCode) {
 
 void SmsManager::sendAndroidSms(const QString &to, const QString &text) {
 #if defined(Q_OS_ANDROID)
-    // Преобразуем QString в JNI-совместимые объекты Java String
+    // 1. Получаем текущую Activity приложения Qt
+    QJniObject activity = QJniObject::callStaticObjectMethod(
+        "org/qtproject/qt/android/bindings/QtActivity", "className", "()Lorg/qtproject/qt/android/bindings/QtActivity;");
+
+    // Альтернативный надежный способ получить текущее контекстное Activity в Qt6
+    QJniObject currentActivity = QJniObject::callStaticObjectMethod(
+        "org/qtproject/qt/android/QtNative", "activity", "()Landroid/app/Activity;");
+
+    if (!currentActivity.isValid()) {
+        emit smsStatus(false, "Ошибка: не удалось получить Android Activity");
+        return;
+    }
+
+    // Строка разрешения для Android
+    QString permissionStr = "android.permission.SEND_SMS";
+    QJniObject jPermission = QJniObject::fromString(permissionStr);
+
+    // 2. Проверяем, дано ли разрешение (PackageManager.PERMISSION_GRANTED = 0)
+    jint checkResult = currentActivity.callMethod<jint>(
+        "checkSelfPermission", "(Ljava/lang/String;)I", jPermission.object<jstring>());
+
+    if (checkResult != 0) { // 0 означает GRANTED, всё что кроме — DENIED
+        qDebug() << "Разрешение на SMS не получено, запрашиваем у пользователя...";
+
+        // Создаем массив строк Java из одного элемента для передачи в метод requestPermissions
+        QJniEnvironment env;
+        jobjectArray permArray = env->NewObjectArray(1, env->FindClass("java/lang/String"), env->NewStringUTF("android.permission.SEND_SMS"));
+
+        // Вызываем нативный запрос прав у пользователя (101 — произвольный ID запроса)
+        currentActivity.callMethod<void>(
+            "requestPermissions", "([Ljava/lang/String;I)V", permArray, jint(101));
+
+        emit smsStatus(false, "Запрошено разрешение на отправку SMS. Повторите команду после подтверждения.");
+        return;
+    }
+
+    // 3. Если разрешение есть, вызываем наш кастомный Java-класс SmsSender
     QJniObject jTo = QJniObject::fromString(to);
     QJniObject jText = QJniObject::fromString(text);
 
-    // Получаем стандартный экземпляр SmsManager из Android SDK
-    QJniObject smsManager = QJniObject::callStaticObjectMethod(
-        "android/telephony/SmsManager",
-        "getDefault",
-        "()Landroid/telephony/SmsManager;"
+    // Вызываем статический метод: boolean sendSms(String, String) из com.app.SmsSender
+    jboolean success = QJniObject::callStaticMethod<jboolean>(
+        "com/app/SmsSender",
+        "sendSms",
+        "(Ljava/lang/String;Ljava/lang/String;)Z",
+        jTo.object<jstring>(),
+        jText.object<jstring>()
         );
 
-    if (smsManager.isValid()) {
-        // Вызываем нативный метод отправки SMS
-        smsManager.callMethod<void>(
-            "sendTextMessage",
-            "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Landroid/app/PendingIntent;Landroid/app/PendingIntent;)V",
-            jTo.object<jstring>(),
-            nullptr,
-            jText.object<jstring>(),
-            nullptr,
-            nullptr
-            );
-        emit smsStatus(true, "Команда отправлена в Android SMS-шлюз");
+    if (success) {
+        emit smsStatus(true, "Команда успешно передана в подсистему Android SMS");
     } else {
-        emit smsStatus(false, "Критическая ошибка: Android SmsManager не инициализирован");
+        emit smsStatus(false, "Ошибка Java-модуля при отправке сообщения");
     }
 #else
     Q_UNUSED(to);
     Q_UNUSED(text);
 #endif
 }
+
 
 void SmsManager::sendIosSms(const QString &to, const QString &text) {
 #if defined(Q_OS_IOS)
