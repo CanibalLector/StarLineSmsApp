@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://android.com"
+          package="com.starline.smsapp"
+          android:versionCode="1"
+          android:versionName="1.0">
+
+    <!-- Разрешение на отправку SMS -->
+    <uses-permission android:name="android.permission.SEND_SMS"/>
+
+    <application android:label="StarLine SMS" 
+                 android:allowBackup="true"
+                 android:icon="@mipmap/ic_launcher">
+        
+        <activity android:name="org.qtproject.qt.android.bindings.QtActivity"
+                  android:label="StarLine SMS"
+                  android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|hardKeyboardHidden"
+                  android:launchMode="singleTop"
+                  android:exported="true">
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+
