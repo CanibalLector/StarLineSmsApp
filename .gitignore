@@ -1,3 +1,18 @@
+# Папки сборки (CMake / Qt Creator)
+/build*/
+/.cmake/
+CMakeLists.txt.user
+
+# Настройки IDE (Qt Creator, VS Code, Android Studio, Xcode)
+/.qtcreator/
+/.vscode/
+/.idea/
+*.xcworkspace
+*.xcuserdata
+
+# Операционная система
+.DS_Store
+Thumbs.db
 # C++ / CMake
 /build*/
 /.cmake/
